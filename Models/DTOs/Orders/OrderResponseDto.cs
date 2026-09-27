@@ -9,6 +9,8 @@ public class OrderResponseDto
     public string OrderNumber { get; set; } = string.Empty;
     public decimal TotalAmount { get; set; }
     public string ShippingAddress { get; set; } = string.Empty;
+    public string? CustomerName { get; set; }
+    public string? CustomerEmail { get; set; }
     public OrderPaymentStatus PaymentStatus { get; set; }
     public PaymentMethod PaymentMethod { get; set; }
     public OrderStatus Status { get; set; }

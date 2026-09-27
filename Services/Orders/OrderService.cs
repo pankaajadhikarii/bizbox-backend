@@ -17,6 +17,7 @@ public sealed class OrderService(
     {
         var orders = await dbContext.Orders
             .AsNoTracking()
+            .Include(order => order.Customer)
             .Include(order => order.OrderItems)
             .Include(order => order.Payments)
             .Where(order => order.CustomerId == customerId)
@@ -36,6 +37,7 @@ public sealed class OrderService(
     {
         var query = dbContext.Orders
             .AsNoTracking()
+            .Include(order => order.Customer)
             .Include(order => order.OrderItems)
             .Include(order => order.Payments)
             .Where(order => order.Id == orderId);
@@ -132,6 +134,15 @@ public sealed class OrderService(
             UpdatedAt = now
         };
 
+        var customer = await dbContext.Users
+            .FirstOrDefaultAsync(
+                u => u.Id == customerId,
+                cancellationToken);
+        if (customer is not null)
+        {
+            order.Customer = customer;
+        }
+
         foreach (var cartItem in cart.CartItems)
         {
             var product = cartItem.Product;
@@ -192,6 +203,7 @@ public sealed class OrderService(
     {
         var orders = await dbContext.Orders
             .AsNoTracking()
+            .Include(order => order.Customer)
             .Include(order => order.OrderItems)
             .Include(order => order.Payments)
             .OrderByDescending(order => order.OrderDate)
@@ -208,6 +220,7 @@ public sealed class OrderService(
         CancellationToken cancellationToken = default)
     {
         var order = await dbContext.Orders
+            .Include(item => item.Customer)
             .Include(item => item.OrderItems)
             .Include(item => item.Payments)
             .FirstOrDefaultAsync(
@@ -305,6 +318,10 @@ public sealed class OrderService(
             OrderNumber = order.OrderNumber,
             TotalAmount = order.TotalAmount,
             ShippingAddress = order.ShippingAddress,
+            CustomerName = !string.IsNullOrWhiteSpace(order.Customer?.FullName)
+                ? order.Customer.FullName
+                : (order.Customer?.UserName ?? order.Customer?.Email),
+            CustomerEmail = order.Customer?.Email,
             PaymentStatus = order.PaymentStatus,
             PaymentMethod = order.PaymentMethod,
             Status = order.Status,
