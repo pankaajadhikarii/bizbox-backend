@@ -132,3 +132,4 @@ D:\MAC\6th-sem\net-centric\e-com project\Bizkit-backend\bin\Debug\net10.0\Micros
 D:\MAC\6th-sem\net-centric\e-com project\Bizkit-backend\bin\Debug\net10.0\System.IdentityModel.Tokens.Jwt.dll
 D:\MAC\6th-sem\net-centric\e-com project\Bizkit-backend\obj\Debug\net10.0\Bizkit-backend.sourcelink.json
 D:\MAC\6th-sem\net-centric\e-com project\Bizkit-backend\bin\Debug\net10.0\Bizkit-backend.staticwebassets.runtime.json
+D:\MAC\6th-sem\net-centric\e-com project\Bizkit-backend\bin\Debug\net10.0\CloudinaryDotNet.dll

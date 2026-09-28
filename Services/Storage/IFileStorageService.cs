@@ -9,5 +9,10 @@ public interface IFileStorageService
         string folderName,
         CancellationToken cancellationToken = default);
 
-    void DeleteFile(string? relativeFilePath);
+    Task DeleteFileAsync(
+        string? filePath,
+        CancellationToken cancellationToken = default);
+
+    // Kept so existing callers still compile. Prefer DeleteFileAsync.
+    void DeleteFile(string? filePath);
 }

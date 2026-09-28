@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using CloudinaryDotNet;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -75,6 +76,24 @@ builder.Services.AddAuthorization();
 
 builder.Services.Configure<AdminSettings>(
     builder.Configuration.GetSection("Admin"));
+
+builder.Services.Configure<CloudinarySettings>(
+    builder.Configuration.GetSection("Cloudinary"));
+
+var cloudinarySettings = builder.Configuration
+    .GetSection("Cloudinary")
+    .Get<CloudinarySettings>()
+    ?? throw new InvalidOperationException(
+        "Cloudinary configuration not found.");
+
+var cloudinaryAccount = new Account(
+    cloudinarySettings.CloudName,
+    cloudinarySettings.ApiKey,
+    cloudinarySettings.ApiSecret);
+
+var cloudinary = new Cloudinary(cloudinaryAccount);
+
+builder.Services.AddSingleton(cloudinary);
 
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddScoped<IAuthService, AuthService>();

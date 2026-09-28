@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "0laCSjdo8cU=",
+  "dgSpecHash": "HPMQTaWcGTo=",
   "success": true,
   "projectFilePath": "D:\\MAC\\6th-sem\\net-centric\\e-com project\\Bizkit-backend\\Bizkit-backend.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\paras\\.nuget\\packages\\cloudinarydotnet\\1.29.3\\cloudinarydotnet.1.29.3.nupkg.sha512",
     "C:\\Users\\paras\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\paras\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\10.0.12\\microsoft.aspnetcore.authentication.jwtbearer.10.0.12.nupkg.sha512",
     "C:\\Users\\paras\\.nuget\\packages\\microsoft.aspnetcore.identity.entityframeworkcore\\10.0.12\\microsoft.aspnetcore.identity.entityframeworkcore.10.0.12.nupkg.sha512",

@@ -1,13 +1,27 @@
-using Microsoft.AspNetCore.Hosting;
+using System.Text.RegularExpressions;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace Bizkit_backend.Services.Storage;
 
 public sealed class FileStorageService(
-    IWebHostEnvironment webHostEnvironment) : IFileStorageService
+    Cloudinary cloudinary,
+    ILogger<FileStorageService> logger) : IFileStorageService
 {
-    private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png"];
-    private const long MaxFileSizeBytes = 2 * 1024 * 1024; // 2MB
+    private static readonly string[] AllowedExtensions =
+        [".jpg", ".jpeg", ".png"];
+
+    private static readonly string[] AllowedContentTypes =
+        ["image/jpeg", "image/png"];
+
+    private const long MaxFileSizeBytes = 2 * 1024 * 1024;
+
+    private const string CloudinaryHost = "res.cloudinary.com";
+
+    private static readonly Regex VersionSegment =
+        new(@"^v\d+$", RegexOptions.Compiled);
 
     public async Task<(bool Succeeded, string? FilePath, string? ErrorMessage)> SaveFileAsync(
         IFormFile file,
@@ -24,65 +38,159 @@ public sealed class FileStorageService(
             return (false, null, "File size must not exceed 2MB.");
         }
 
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var extension = Path.GetExtension(file.FileName)
+            .ToLowerInvariant();
 
         if (Array.IndexOf(AllowedExtensions, extension) < 0)
         {
-            return (false, null, "Only .jpg, .jpeg, and .png image files are allowed.");
+            return (
+                false,
+                null,
+                "Only .jpg, .jpeg, and .png image files are allowed."
+            );
         }
 
-        var webRootPath = webHostEnvironment.WebRootPath;
-        if (string.IsNullOrWhiteSpace(webRootPath))
+        if (Array.IndexOf(
+                AllowedContentTypes,
+                file.ContentType?.ToLowerInvariant()) < 0)
         {
-            webRootPath = Path.Combine(webHostEnvironment.ContentRootPath, "wwwroot");
+            return (
+                false,
+                null,
+                "Invalid file type. Only JPEG and PNG images are allowed."
+            );
         }
 
-        var uploadsFolder = Path.Combine(webRootPath, "uploads", folderName);
+        await using var stream = file.OpenReadStream();
 
-        if (!Directory.Exists(uploadsFolder))
+        var uploadParams = new ImageUploadParams
         {
-            Directory.CreateDirectory(uploadsFolder);
-        }
+            File = new FileDescription(file.FileName, stream),
+            Folder = $"bizkit/{folderName}"
+        };
 
-        var uniqueFileName = $"{Guid.NewGuid():N}{extension}";
-        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+        var uploadResult = await cloudinary.UploadAsync(
+            uploadParams,
+            cancellationToken);
 
-        await using (var stream = new FileStream(filePath, FileMode.Create))
+        if (uploadResult.Error != null)
         {
-            await file.CopyToAsync(stream, cancellationToken);
+            logger.LogError(
+                "Cloudinary upload failed: {Message}",
+                uploadResult.Error.Message);
+
+            return (
+                false,
+                null,
+                $"Image upload failed: {uploadResult.Error.Message}"
+            );
         }
 
-        var relativePath = $"/uploads/{folderName}/{uniqueFileName}";
-
-        return (true, relativePath, null);
+        return (
+            true,
+            uploadResult.SecureUrl?.ToString(),
+            null
+        );
     }
 
-    public void DeleteFile(string? relativeFilePath)
+    public async Task DeleteFileAsync(
+        string? filePath,
+        CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(relativeFilePath))
+        if (string.IsNullOrWhiteSpace(filePath))
         {
             return;
         }
 
-        var webRootPath = webHostEnvironment.WebRootPath;
-        if (string.IsNullOrWhiteSpace(webRootPath))
+        // Old local paths (e.g. /uploads/products/x.jpg) and non-Cloudinary
+        // URLs are ignored.
+        if (!Uri.TryCreate(filePath, UriKind.Absolute, out var uri) ||
+            !string.Equals(
+                uri.Host,
+                CloudinaryHost,
+                StringComparison.OrdinalIgnoreCase))
         {
-            webRootPath = Path.Combine(webHostEnvironment.ContentRootPath, "wwwroot");
+            return;
         }
 
-        var relative = relativeFilePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-        var fullPath = Path.Combine(webRootPath, relative);
+        var publicId = ExtractPublicId(uri);
 
-        if (File.Exists(fullPath))
+        if (string.IsNullOrWhiteSpace(publicId))
         {
-            try
+            logger.LogWarning(
+                "Could not extract Cloudinary public ID from {Url}",
+                filePath);
+            return;
+        }
+
+        try
+        {
+            var result = await cloudinary.DestroyAsync(
+    new DeletionParams(publicId));
+
+            if (result.Error != null || result.Result != "ok")
             {
-                File.Delete(fullPath);
-            }
-            catch
-            {
-                // Ignore file deletion errors
+                logger.LogWarning(
+                    "Cloudinary delete for {PublicId} returned '{Result}': {Error}",
+                    publicId,
+                    result.Result,
+                    result.Error?.Message);
             }
         }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Failed to delete Cloudinary image {PublicId}",
+                publicId);
+        }
+    }
+
+    public void DeleteFile(string? filePath)
+    {
+        DeleteFileAsync(filePath).GetAwaiter().GetResult();
+    }
+
+    // URL format:
+    // https://res.cloudinary.com/{cloud}/image/upload/[transformations/]v123/folder/name.jpg
+    // Public ID:   folder/name
+    private static string? ExtractPublicId(Uri uri)
+    {
+        var segments = uri.AbsolutePath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        var uploadIndex = Array.IndexOf(segments, "upload");
+
+        if (uploadIndex < 0 || uploadIndex + 1 >= segments.Length)
+        {
+            return null;
+        }
+
+        var rest = segments.Skip(uploadIndex + 1).ToList();
+
+        // Drop everything up to and including the version segment (v123...),
+        // which also removes any transformation segments before it.
+        var versionIndex = rest.FindIndex(s => VersionSegment.IsMatch(s));
+
+        if (versionIndex >= 0)
+        {
+            rest = rest.Skip(versionIndex + 1).ToList();
+        }
+
+        var publicIdSegments = rest
+            .Select(Uri.UnescapeDataString)
+            .ToArray();
+
+        if (publicIdSegments.Length == 0)
+        {
+            return null;
+        }
+
+        var last = publicIdSegments.Length - 1;
+
+        publicIdSegments[last] =
+            Path.GetFileNameWithoutExtension(publicIdSegments[last]);
+
+        return string.Join("/", publicIdSegments);
     }
 }

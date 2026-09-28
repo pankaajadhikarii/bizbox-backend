@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v10.0": {
       "Bizkit-backend/1.0.0": {
         "dependencies": {
+          "CloudinaryDotNet": "1.29.3",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.12",
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "10.0.12",
           "Microsoft.AspNetCore.OpenApi": "10.0.11",
@@ -17,6 +18,17 @@
         },
         "runtime": {
           "Bizkit-backend.dll": {}
+        }
+      },
+      "CloudinaryDotNet/1.29.3": {
+        "dependencies": {
+          "Newtonsoft.Json": "13.0.4"
+        },
+        "runtime": {
+          "lib/netstandard2.0/CloudinaryDotNet.dll": {
+            "assemblyVersion": "1.29.3.0",
+            "fileVersion": "1.29.3.0"
+          }
         }
       },
       "Humanizer.Core/2.14.1": {
@@ -613,6 +625,13 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "CloudinaryDotNet/1.29.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-C9UpTh7YoOrfeUXcdjnsEloTaWKTNeDgvMpWoGAOTkC6HOxPIbcQAiSGhoqPPT8scAKAFjrPzf89nyZkGvtoCg==",
+      "path": "cloudinarydotnet/1.29.3",
+      "hashPath": "cloudinarydotnet.1.29.3.nupkg.sha512"
     },
     "Humanizer.Core/2.14.1": {
       "type": "package",
