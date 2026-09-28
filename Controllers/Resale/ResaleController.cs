@@ -55,6 +55,52 @@ public sealed class ResaleController(
         return Ok(listing);
     }
 
+    [HttpGet("eligible-products")]
+    [Authorize]
+    [ProducesResponseType(
+        typeof(IReadOnlyCollection<EligibleResaleProductDto>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetEligibleProducts(
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var products = await resaleService.GetEligibleProductsAsync(
+            userId,
+            cancellationToken);
+
+        return Ok(products);
+    }
+
+    [HttpGet("my-listings")]
+    [Authorize]
+    [ProducesResponseType(
+        typeof(IReadOnlyCollection<ResaleListingResponseDto>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMyListings(
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var listings = await resaleService.GetMyListingsAsync(
+            userId,
+            cancellationToken);
+
+        return Ok(listings);
+    }
+
     [HttpPost]
     [Authorize]
     [Consumes("multipart/form-data")]

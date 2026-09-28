@@ -12,6 +12,14 @@ public interface IResaleService
         int id,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<EligibleResaleProductDto>> GetEligibleProductsAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<ResaleListingResponseDto>> GetMyListingsAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
+
     Task<ResaleServiceResult> CreateAsync(
         string sellerId,
         CreateResaleListingRequestDto request,
@@ -33,4 +41,4 @@ public interface IResaleService
         int id,
         CreateOrderRequestDto request,
         CancellationToken cancellationToken = default);
-}
+}

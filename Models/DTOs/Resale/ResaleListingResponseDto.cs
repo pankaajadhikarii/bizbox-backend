@@ -16,4 +16,7 @@ public class ResaleListingResponseDto
     public ResaleListingStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public string? BuyerName { get; set; }
+    public string? BuyerEmail { get; set; }
+    public string? ShippingAddress { get; set; }
 }

@@ -50,6 +50,75 @@ public sealed class ResaleService(
             : ToResponse(listing);
     }
 
+    public async Task<IReadOnlyCollection<EligibleResaleProductDto>> GetEligibleProductsAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        // Get distinct product IDs from delivered orders belonging to this user
+        var purchasedProductIds = await dbContext.OrderItems
+            .AsNoTracking()
+            .Where(item =>
+                item.Order.CustomerId == userId &&
+                item.Order.Status == OrderStatus.Delivered &&
+                item.ResaleListingId == null) // only original purchases, not resale buys
+            .Select(item => item.ProductId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (purchasedProductIds.Count == 0)
+        {
+            return [];
+        }
+
+        // Get currently active resale listing IDs for this user
+        var alreadyListedProductIds = await dbContext.ResaleListings
+            .AsNoTracking()
+            .Where(listing =>
+                listing.SellerId == userId &&
+                listing.Status == ResaleListingStatus.Active)
+            .Select(listing => listing.ProductId)
+            .ToHashSetAsync(cancellationToken);
+
+        // Fetch product details for eligible products
+        var products = await dbContext.Products
+            .AsNoTracking()
+            .Where(p =>
+                purchasedProductIds.Contains(p.Id) &&
+                p.IsActive)
+            .OrderBy(p => p.Name)
+            .Select(p => new EligibleResaleProductDto
+            {
+                ProductId = p.Id,
+                ProductName = p.Name,
+                ProductImageUrl = p.ImageUrl,
+                OriginalPrice = p.Price,
+                AlreadyListed = alreadyListedProductIds.Contains(p.Id)
+            })
+            .ToListAsync(cancellationToken);
+
+        return products;
+    }
+
+    public async Task<IReadOnlyCollection<ResaleListingResponseDto>> GetMyListingsAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        var listings = await dbContext.ResaleListings
+            .AsNoTracking()
+            .Include(listing => listing.Product)
+            .Include(listing => listing.Seller)
+            .Include(listing => listing.OrderItems)
+                .ThenInclude(oi => oi.Order)
+                .ThenInclude(o => o.Customer)
+            .Where(listing => listing.SellerId == userId)
+            .OrderByDescending(listing => listing.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return listings
+            .Select(ToResponse)
+            .ToList();
+    }
+
     public async Task<ResaleServiceResult> CreateAsync(
         string sellerId,
         CreateResaleListingRequestDto request,
@@ -377,6 +446,10 @@ public sealed class ResaleService(
     private static ResaleListingResponseDto ToResponse(
         ResaleListing listing)
     {
+        var orderItem = listing.OrderItems.LastOrDefault();
+        var order = orderItem?.Order;
+        var buyer = order?.Customer;
+
         return new ResaleListingResponseDto
         {
             Id = listing.Id,
@@ -390,7 +463,10 @@ public sealed class ResaleService(
             ImageUrl = listing.ImageUrl,
             Status = listing.Status,
             CreatedAt = listing.CreatedAt,
-            UpdatedAt = listing.UpdatedAt
+            UpdatedAt = listing.UpdatedAt,
+            BuyerName = buyer?.FullName,
+            BuyerEmail = buyer?.Email,
+            ShippingAddress = order?.ShippingAddress
         };
     }
 }
