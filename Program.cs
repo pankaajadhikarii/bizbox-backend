@@ -80,6 +80,11 @@ builder.Services.Configure<AdminSettings>(
 builder.Services.Configure<CloudinarySettings>(
     builder.Configuration.GetSection("Cloudinary"));
 
+builder.Services.Configure<EsewaSettings>(
+    builder.Configuration.GetSection("Esewa"));
+
+builder.Services.AddHttpClient();
+
 var cloudinarySettings = builder.Configuration
     .GetSection("Cloudinary")
     .Get<CloudinarySettings>()
@@ -104,6 +109,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IEsewaService, EsewaService>();
 builder.Services.AddScoped<IResaleService, ResaleService>();
 
 builder.Services.AddControllers();

@@ -10,7 +10,8 @@ namespace Bizkit_backend.Controllers.Payments;
 [Route("api/payments")]
 [Authorize]
 public sealed class PaymentsController(
-    IPaymentService paymentService) : ControllerBase
+    IPaymentService paymentService,
+    IEsewaService esewaService) : ControllerBase
 {
     [HttpGet("{id:int}")]
     [ProducesResponseType(
@@ -46,6 +47,98 @@ public sealed class PaymentsController(
         }
 
         return Ok(payment);
+    }
+
+    [HttpPost("esewa/initiate")]
+    [ProducesResponseType(
+        typeof(EsewaPaymentResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> InitiateEsewa(
+        [FromBody] EsewaInitiateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await esewaService.InitiateAsync(
+            request.OrderId,
+            userId,
+            cancellationToken);
+
+        if (result.Succeeded)
+        {
+            return Ok(result.Response);
+        }
+
+        if (result.Errors.Contains("Order not found."))
+        {
+            return NotFound(new
+            {
+                message = "Order not found."
+            });
+        }
+
+        return BadRequest(new
+        {
+            message = "eSewa payment could not be started.",
+            errors = result.Errors
+        });
+    }
+
+    [HttpPost("esewa/verify")]
+    [ProducesResponseType(
+        typeof(PaymentResponseDto),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> VerifyEsewa(
+        [FromBody] EsewaVerifyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await esewaService.VerifyAsync(
+            request.Data,
+            userId,
+            cancellationToken);
+
+        if (result.Succeeded)
+        {
+            return Ok(result.Response);
+        }
+
+        if (result.Errors.Contains("Payment not found."))
+        {
+            return NotFound(new
+            {
+                message = "Payment not found."
+            });
+        }
+
+        return BadRequest(new
+        {
+            message = "eSewa payment could not be verified.",
+            errors = result.Errors
+        });
     }
 
     [HttpPatch("admin/{id:int}/cod-paid")]
