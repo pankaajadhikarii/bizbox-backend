@@ -5,6 +5,7 @@ namespace Bizkit_backend.Services.BusinessTypes;
 public interface IBusinessTypeService
 {
     Task<IReadOnlyCollection<BusinessTypeResponseDto>> GetAllAsync(
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     Task<BusinessTypeResponseDto?> GetByIdAsync(

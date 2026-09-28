@@ -16,13 +16,15 @@ public sealed class BusinessTypesController(
         typeof(IReadOnlyCollection<BusinessTypeResponseDto>),
         StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
-        CancellationToken cancellationToken)
-    {
-        var businessTypes = await businessTypeService.GetAllAsync(
-            cancellationToken);
+    [FromQuery] string? search,
+    CancellationToken cancellationToken)
+{
+    var businessTypes = await businessTypeService.GetAllAsync(
+        search,
+        cancellationToken);
 
-        return Ok(businessTypes);
-    }
+    return Ok(businessTypes);
+}
 
     [HttpGet("{id:int}")]
     [AllowAnonymous]

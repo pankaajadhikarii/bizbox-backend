@@ -11,19 +11,36 @@ public sealed class BusinessTypeService(
     IFileStorageService fileStorageService) : IBusinessTypeService
 {
     public async Task<IReadOnlyCollection<BusinessTypeResponseDto>>
-        GetAllAsync(
-            CancellationToken cancellationToken = default)
-    {
-        var businessTypes = await dbContext.BusinessTypes
-            .AsNoTracking()
-            .Where(businessType => businessType.IsActive)
-            .OrderBy(businessType => businessType.Name)
-            .ToListAsync(cancellationToken);
+    GetAllAsync(
+        string? search = null,
+        CancellationToken cancellationToken = default)
+{
+    var query = dbContext.BusinessTypes
+        .AsNoTracking()
+        .Where(businessType => businessType.IsActive);
 
-        return businessTypes
-            .Select(ToResponse)
-            .ToList();
+    if (!string.IsNullOrWhiteSpace(search))
+    {
+        var searchTerm = search.Trim();
+
+        query = query.Where(businessType =>
+            EF.Functions.ILike(
+                businessType.Name,
+                $"%{searchTerm}%") ||
+            (businessType.Description != null &&
+             EF.Functions.ILike(
+                 businessType.Description,
+                 $"%{searchTerm}%")));
     }
+
+    var businessTypes = await query
+        .OrderBy(businessType => businessType.Name)
+        .ToListAsync(cancellationToken);
+
+    return businessTypes
+        .Select(ToResponse)
+        .ToList();
+}
 
     public async Task<BusinessTypeResponseDto?> GetByIdAsync(
         int id,
