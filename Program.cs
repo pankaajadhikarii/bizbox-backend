@@ -12,6 +12,7 @@ using Bizkit_backend.Services.Products;
 using Bizkit_backend.Services.Resale;
 using Bizkit_backend.Services.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -97,6 +98,7 @@ var cloudinaryAccount = new Account(
     cloudinarySettings.ApiSecret);
 
 var cloudinary = new Cloudinary(cloudinaryAccount);
+cloudinary.Api.Secure = true;
 
 builder.Services.AddSingleton(cloudinary);
 
@@ -132,7 +134,17 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod();
     });
 });
+
 var app = builder.Build();
+
+// Must run first: Render (and most hosts) terminate HTTPS at their edge and
+// forward plain HTTP internally. Without this, UseHttpsRedirection below
+// would see every request as HTTP and redirect-loop it.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor
+        | ForwardedHeaders.XForwardedProto
+});
 
 using (var scope = app.Services.CreateScope())
 {
