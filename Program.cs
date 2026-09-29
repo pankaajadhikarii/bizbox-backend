@@ -116,17 +116,22 @@ builder.Services.AddControllers();
 
 builder.Services.AddOpenApi();
 
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()
+    ?? throw new InvalidOperationException(
+        "Cors:AllowedOrigins not found. Add it to appsettings.");
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173")
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
 });
-
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -160,8 +165,12 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+else
+{
+    app.UseHsts();
+}
 
-// app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
